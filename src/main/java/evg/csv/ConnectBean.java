@@ -9,10 +9,11 @@ public class ConnectBean {
     private static ConnectBean instance;
     private ConnectBean() throws Exception {
         try {           
-            String driver = "org.sqlite.JDBC";
+            String driver = "oracle.jdbc.driver.OracleDriver";
             Class.forName(driver).newInstance();
-            String url = "jdbc:sqlite:C:\\Projects\\JAVA\\jsp_app\\database.sqlite3";
-            con = DriverManager.getConnection(url);
+            // String url = "jdbc:sqlite:C:\\Projects\\JAVA\\jsp_app\\database.sqlite3";
+            String url = "jdbc:oracle:thin:@192.168.1.102:1521:ORCL?rewriteBatchedStatements=true";
+            con = DriverManager.getConnection(url,"datachange","drgs2019");
             con.setAutoCommit(false);
         } 
         catch (ClassNotFoundException e) {
