@@ -1,26 +1,35 @@
 package evg.csv;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.text.csv.*;
+import cn.hutool.core.text.csv.CsvReadConfig;
+import cn.hutool.core.text.csv.CsvReader;
+import cn.hutool.core.text.csv.CsvUtil;
+import cn.hutool.core.text.csv.CsvWriter;
+import de.siegmar.fastcsv.reader.CsvRecord;
+import de.siegmar.fastcsv.writer.QuoteStrategies;
+import de.siegmar.fastcsv.writer.QuoteStrategy;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.text.*;
 import java.io.File;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class main extends JFrame {
     String full_path;
 
-    public class JTextFieldLimit extends PlainDocument {
+    public static class JTextFieldLimit extends PlainDocument {
 
-        private int limit;  // 限制的长度
+        private final int limit;  // 限制的长度
 
         public JTextFieldLimit(int limit) {
             super(); // 调用父类构造
@@ -105,6 +114,10 @@ public class main extends JFrame {
         textDelimiter_label.setDocument(new JTextFieldLimit(1));
         textDelimiter_label.setText("\"");
 
+        // 编码
+        JComboBox<String> encodeBox = new JComboBox<>();
+        encodeBox.setModel(new DefaultComboBoxModel<>(new String[]{"UTF-8", "GB2312", "GBK"}));
+        encodeBox.setSelectedItem("UTF-8");
         final JLabel headerLineNo = new JLabel("Header Line No");
         final JTextField headerLineNo_label = new JTextField(15);
         ((AbstractDocument) headerLineNo_label.getDocument()).setDocumentFilter(new DocumentFilter() {
@@ -176,8 +189,8 @@ public class main extends JFrame {
             }
         });
 
-        JButton standardize_button = new JButton("Standardize");
-        standardize_button.addActionListener(e -> {
+        JButton standardize_button_hutoolCsvReader = new JButton("Standardize_HutoolCsvReader");
+        standardize_button_hutoolCsvReader.addActionListener(e -> {
             CsvReadConfig csvReadConfig = CsvReadConfig.defaultConfig()
                     .setFieldSeparator(fieldSeparator_label.getText().trim().charAt(0))
                     .setTextDelimiter(textDelimiter_label.getText().trim().charAt(0))
@@ -185,8 +198,8 @@ public class main extends JFrame {
                     .setTrimField(true);
 
             try (CsvReader csvReader = CsvUtil.getReader(FileUtil.getBOMReader(FileUtil.file(full_path)), csvReadConfig)) {
-                String out_path = full_path.substring(0, full_path.lastIndexOf('.')) + "_.csv";
-                try (CsvWriter csvWriter = CsvUtil.getWriter(out_path, StandardCharsets.UTF_8)) {
+                String out_path = full_path.substring(0, full_path.lastIndexOf('.')) + "_hu.csv";
+                try (CsvWriter csvWriter = CsvUtil.getWriter(out_path, Charset.forName((String) Objects.requireNonNull(encodeBox.getSelectedItem())))) {
                     csvReader.forEach(a -> {
                         long ol = a.getOriginalLineNumber();
                         if (ol < 100 && ol % 10 == 0) {
@@ -195,7 +208,7 @@ public class main extends JFrame {
                             System.err.println(ol + " lines processed");
                         } else if (ol < 1000000 && ol % 10000 == 0) {
                             System.err.println(ol + " lines processed");
-                        } else if(ol % 100000 == 0){
+                        } else if (ol % 100000 == 0) {
                             System.err.println(ol + " lines processed");
                         }
                         csvWriter.writeLine(a.toArray(new String[0]));
@@ -210,6 +223,45 @@ public class main extends JFrame {
                 JOptionPane.showMessageDialog(null, "！！！标化CSV时读取CSV文件失败！！！:\n" + ex.getMessage());
             }
         });
+
+        JButton standardize_button_FastCsv = new JButton("Standardize_FastCsv");
+        standardize_button_FastCsv.addActionListener(e -> {
+            Path file = Paths.get(full_path);
+            try (de.siegmar.fastcsv.reader.CsvReader<CsvRecord> csvr = de.siegmar.fastcsv.reader.CsvReader
+                    .builder()
+                    .fieldSeparator(fieldSeparator_label.getText().trim().charAt(0))
+                    .quoteCharacter(textDelimiter_label.getText().trim().charAt(0))
+                    .ofCsvRecord(file, Charset.forName((String) Objects.requireNonNull(encodeBox.getSelectedItem())))) {
+                String out_path = full_path.substring(0, full_path.lastIndexOf('.')) + "_fast.csv";
+                Path ofile = Paths.get(out_path);
+                try (de.siegmar.fastcsv.writer.CsvWriter csvw = de.siegmar.fastcsv.writer.CsvWriter.builder()
+                        .quoteStrategy(QuoteStrategies.EMPTY)
+                        .build(ofile)) {
+                    csvr.forEach(a -> {
+                        long ol = a.getStartingLineNumber();
+                        if (ol < 100 && ol % 10 == 0) {
+                            System.err.println(ol + " lines processed");
+                        } else if (ol < 10000 && ol % 100 == 0) {
+                            System.err.println(ol + " lines processed");
+                        } else if (ol < 1000000 && ol % 10000 == 0) {
+                            System.err.println(ol + " lines processed");
+                        } else if (ol % 100000 == 0) {
+                            System.err.println(ol + " lines processed");
+                        }
+                        csvw.writeRecord(a.getFields());
+                    });
+                    JOptionPane.showMessageDialog(null, "！！！标化CSV处理成功！！！");
+                } catch (Exception ex) {
+                    Logger.getLogger(main.class.getName()).log(Level.SEVERE, null, ex);
+                    JOptionPane.showMessageDialog(null, "！！！标化CSV时写入CSV文件失败！！！:\n" + ex.getMessage());
+                }
+            } catch (Exception ex) {
+                Logger.getLogger(main.class.getName()).log(Level.SEVERE, null, ex);
+                JOptionPane.showMessageDialog(null, "！！！标化CSV时读取CSV文件失败！！！:\n" + ex.getMessage());
+            }
+        });
+
+        // CSVParser.parse()
 
         panel.add(jdbc_url);
         panel.add(jdbc_url_label);
@@ -231,6 +283,7 @@ public class main extends JFrame {
 
         panel.add(textDelimiter);
         panel.add(textDelimiter_label);
+        panel.add(encodeBox);
 
         panel.add(headerLineNo);
         panel.add(headerLineNo_label);
@@ -241,7 +294,8 @@ public class main extends JFrame {
         panel.add(label);
         panel.add(button);
         panel.add(button_start);
-        panel.add(standardize_button);
+        panel.add(standardize_button_hutoolCsvReader);
+        panel.add(standardize_button_FastCsv);
 
         getContentPane().add(panel);
         pack();
