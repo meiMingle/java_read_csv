@@ -180,7 +180,8 @@ public class main extends JFrame {
                         textDelimiter_label.getText().trim().charAt(0),
                         Long.parseLong(headerLineNo_label.getText()),
                         Long.parseLong(firstDataLineNo_label.getText()),
-                        (String) jcb.getSelectedItem()
+                        (String) jcb.getSelectedItem(),
+                        (String)encodeBox.getSelectedItem()
                 );
                 System.err.println("Import \"" + full_path + "\"  completed");
             } catch (Exception ex) {
