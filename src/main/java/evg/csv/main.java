@@ -6,8 +6,9 @@ import cn.hutool.core.text.csv.CsvReader;
 import cn.hutool.core.text.csv.CsvUtil;
 import cn.hutool.core.text.csv.CsvWriter;
 import de.siegmar.fastcsv.reader.CsvRecord;
+import de.siegmar.fastcsv.reader.CsvRecordHandler;
+import de.siegmar.fastcsv.reader.FieldModifiers;
 import de.siegmar.fastcsv.writer.QuoteStrategies;
-import de.siegmar.fastcsv.writer.QuoteStrategy;
 
 import javax.swing.*;
 import javax.swing.filechooser.FileNameExtensionFilter;
@@ -232,7 +233,7 @@ public class main extends JFrame {
                     .builder()
                     .fieldSeparator(fieldSeparator_label.getText().trim().charAt(0))
                     .quoteCharacter(textDelimiter_label.getText().trim().charAt(0))
-                    .ofCsvRecord(file, Charset.forName((String) Objects.requireNonNull(encodeBox.getSelectedItem())))) {
+                    .build(new CsvRecordHandler(FieldModifiers.TRIM),file, Charset.forName((String) Objects.requireNonNull(encodeBox.getSelectedItem())))) {
                 String out_path = full_path.substring(0, full_path.lastIndexOf('.')) + "_fast.csv";
                 Path ofile = Paths.get(out_path);
                 try (de.siegmar.fastcsv.writer.CsvWriter csvw = de.siegmar.fastcsv.writer.CsvWriter.builder()
