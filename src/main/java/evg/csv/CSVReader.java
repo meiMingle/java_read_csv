@@ -12,9 +12,7 @@ package evg.csv;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.io.file.PathUtil;
 import cn.hutool.core.text.csv.*;
-import de.siegmar.fastcsv.reader.CloseableIterator;
-import de.siegmar.fastcsv.reader.CsvRecord;
-import de.siegmar.fastcsv.reader.NamedCsvRecord;
+import de.siegmar.fastcsv.reader.*;
 
 import static evg.csv.Utils.*;
 
@@ -32,10 +30,10 @@ import java.util.*;
 public class CSVReader {
 
     @SuppressWarnings("empty-statement")
-    public static void generate_sql(String table_name, String csvFile, char fieldSeparator, char textDelimiter, long headerLineNo, long beginDataLineNo, String schema,String charset) throws Exception {
+    public static void generate_sql(String table_name, String csvFile, char fieldSeparator, char textDelimiter, long headerLineNo, long beginDataLineNo, String schema, String charset) throws Exception {
 //        String csvFile = "C:\\temp\\IKAR-16902.csv";        
 //         CsvRow csv_line = null;
-        NamedCsvRecord  csv_line = null;
+        NamedCsvRecord csv_line = null;
         String cvsSplitBy = ",";
         String str_for_create_table = "CREATE TABLE \"" + schema + "\".\"" + table_name + "\" ";
         StringBuilder str_create_table = new StringBuilder("(");
@@ -43,14 +41,12 @@ public class CSVReader {
         int num_cols;
         String final_sql_create_table;
 
-
         try (de.siegmar.fastcsv.reader.CsvReader<NamedCsvRecord> csvr = de.siegmar.fastcsv.reader.CsvReader
                 .builder()
                 .fieldSeparator(fieldSeparator)
                 .quoteCharacter(textDelimiter)
-                .ofNamedCsvRecord(Paths.get(csvFile), Charset.forName(charset));
+                .build(new NamedCsvRecordHandler(FieldModifiers.TRIM), Paths.get(csvFile), Charset.forName(charset));
              CloseableIterator<NamedCsvRecord> iterator = csvr.iterator();) {
-
             csv_line = iterator.next();
             num_cols = csv_line.getFieldCount();
             Map<String, String> fieldMap = csv_line.getFieldsAsMap();
@@ -97,18 +93,18 @@ public class CSVReader {
             PreparedStatement ps = connection.prepareStatement(final_insert);
             int commitCount = 1;
             // Savepoint savepoint = null;
-            ps.setLong(1, csv_line.getStartingLineNumber()-1);
+            ps.setLong(1, csv_line.getStartingLineNumber() - 1);
             for (int j = 0; j < csv_line.getFieldCount(); j++) {
-                ps.setString( 2 + j, csv_line.getField(j));
+                ps.setString(2 + j, csv_line.getField(j));
             }
-            try{
-                while (iterator.hasNext()){
+            try {
+                while (iterator.hasNext()) {
                     commitCount++;
                     csv_line = iterator.next();
 
-                    ps.setLong(1, csv_line.getStartingLineNumber()-1);
+                    ps.setLong(1, csv_line.getStartingLineNumber() - 1);
                     for (int j = 0; j < csv_line.getFieldCount(); j++) {
-                        ps.setString( 2 + j, csv_line.getField(j));
+                        ps.setString(2 + j, csv_line.getField(j));
                     }
                     ps.addBatch();
                     ps.clearParameters();
@@ -125,8 +121,8 @@ public class CSVReader {
             } catch (SQLException e) {
                 connection.rollback();
                 connection.commit();
-                throw new RuntimeException("line:"+ commitCount,e);
-            }finally {
+                throw new RuntimeException("line:" + commitCount, e);
+            } finally {
 
             }
 
@@ -167,7 +163,7 @@ public class CSVReader {
             str_insert_table.append("?");
         }
         str_insert_table.append(")");
-        return "INSERT  INTO \"" + schema + "\".\"" + table_name + "\" " + str_values_table +" VALUES "+ str_insert_table;
+        return "INSERT  INTO \"" + schema + "\".\"" + table_name + "\" " + str_values_table + " VALUES " + str_insert_table;
     }
 
 
